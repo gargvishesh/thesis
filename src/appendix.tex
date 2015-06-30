@@ -1,0 +1,14 @@
+\begin{theorem}
+The sub-plan $p_i$ chosen at any internal node by putting $\lambda_l = \lambda$ will always be the one chosen over all other lower cycle sub-plans at that node, in all the subsequent nodes, in the absence of pruning.   
+\end{theorem}
+
+\begin{proof}
+Let $c_i$ and $w_i$ be the LC and WC of sub-plan $p_i$, respectively at some internal node $N$. Also, let there be another sub-plan $p_j$ at $N$ with LC $c_j$ and WC $w_j$. For both $p_i$ and $p_j$, $c_i \le (1+
+\lambda)c_o$ and $c_j \le (1+
+\lambda)c_o$ w.r.t. the optimal sub-plan $p_o$. Clearly, the plan $p_j$ was ignored since $w_j > w_i$ even though $c_j < c_i$.
+
+We will prove by contradiction that a sub-plan containing $p_j$ could never have been the selected candidate over a sub-plan containing $p_i$ at any subsequent node in the absence of any pruning. 
+
+Let us assume for the moment that $p_j$ was indeed chosen over $p_i$ as the WC-optimal sub-plan at the next higher node $N'$ with the LC of the LC-optimal plan at $N'$ being $c_o^'$. 
+Clearly, since $N^'$ is a downstream node in the plan tree, $c_o^' \ge c_o$. Let $\delta$ be the cost increase after including the cost of the additional operator at this node bringing the total cost to $c_j + \delta$. Now, since a sub-plan containing $p_j$ got selected at this node, $c_j + \delta \le (1+\lambda)c_o^{'}$ 
+\end{proof}

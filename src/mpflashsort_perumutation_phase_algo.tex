@@ -1,0 +1,43 @@
+\begin{algorithm}[h!]
+\small
+\caption{Permutation Phase}
+\label{alg:swap_phase}
+\textbf{partitionStart[]} is obtained from Classification Phase\\
+\textbf{nextUnresolvedIndex[]} indicates the next position to be examined for each partition\\
+\begin{algorithmic}[1]
+\State nextUnresolvedIndex[] = partitionStart[]
+\For {i=1 to $N_R$}
+	\State curPartitionCorrect = getPartition(array[i])
+     \If {i between partitionStart[curPartitionCorrect] and  partitionStart[curPartitionCorrect+1]}                
+     \State nextUnresolvedIndex[curPartitionCorrect] = i+1
+	\State continue
+     \Else
+     		\State firstCandidateLoc = i
+			\State presentCandidate = array[i]             
+            \State flag = 1
+            \While {flag} 
+                \State targetPartitionStart = nextUnresolvedIndex[curPartitionCorrect]
+                \State targetPartitionEnd = partitionStart[curPartitionCorrect + 1]
+                \For {k=targetPartitionStart to targetPartitionEnd} 
+                \State nextPartitionCorrect = getPartition(array[i])
+                    \If {k between partitionStart[nextPartitionCorrect]                       and 
+                    \State partitionStart[nextPartitionCorrect + 1]}
+                        \State continue
+                        
+                    \ElsIf {k == firstCandidateLoc} 
+                        \State flag = 0 \Comment Indicates it is a cycle
+                    \EndIf
+                    \State swap(presentCandidate, array[k])
+                    \State nextUnresolvedIndex[curPartitionCorrect] = k+1
+                    \State curPartitionCorrect = nextPartitionCorrect
+                    
+                    \State break
+             
+				\EndFor
+			\EndWhile
+	\EndIf
+\EndFor
+\Comment {Time complexity=$N_R\times log_2p$ }
+\end{algorithmic}
+
+\end{algorithm}

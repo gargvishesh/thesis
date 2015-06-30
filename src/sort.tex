@@ -1,0 +1,196 @@
+\section{The \emph{Sort} Operator} \label{sort}
+
+Sorting is among the most commonly used operations in database systems, forming
+the core of operators such as \emph{merge join}, \emph{order-by} and some
+flavors of \emph{group-by}.  The process of sorting is quite write-intensive
+since the commonly used in-memory sorting algorithms, such as
+\textit{quicksort}, involve considerable data movement. In the single pivot
+quicksort algorithm with $n$ elements, the average number of swaps is of the
+order of $0.3nln(n)$~\cite{swaps}. There are other algorithms such as
+\emph{selection sort} which involve much less data movement, but they incur
+\emph{quadratic} time complexity in the number of elements to be sorted, and are
+therefore unsuitable for large datasets.
+
+The main advantage associated with the quicksort algorithm is that it has good
+average-case time complexity and that it sorts the input data in-place. If the
+initial array is much larger than the DRAM size, it would entail evictions from
+the DRAM during the swapping process of partitioning. These evictions might lead
+to PCM writes if the evicted DRAM lines are \textit{dirty}, which is likely
+since elements are being swapped. If the resulting partition sizes continue to
+be larger than DRAM, partitioning them in turn will again cause DRAM evictions
+and consequent writes. Clearly, this trend of writes will continue in the
+recursion tree until the partition sizes become small enough to fit within DRAM.
+Thereafter, there would be no further evictions during swapping and the
+remaining sorting process would finish inside the DRAM itself.
+
+From the above discussion, it is clear that it would be desirable for the
+sorting algorithm to converge fast to partition sizes below DRAM size with
+fewer number of swaps. For uniformly-distributed data, these requirements are
+satisfied by \emph{flashsort}~\cite{flashsort}. On the other hand, for data with
+skewed distribution, we propose a variant of flashsort called \emph{multi-pivot
+flashsort}. This algorithm adopts the pivot selection feature of the quicksort 
+algorithm into flashsort in order to tackle the skewness in data.
+
+Both these algorithms are discussed in detail in the following sections. 
+
+\subsection{Data with uniform distribution}\label{sort_uniform} 
+
+The flashsort algorithm can potentially form DRAM-sized partitions in a
+\emph{single} partitioning step with at most $N_R$ swaps. The sorting is done
+in-place with a time complexity of $O(N_Rlog_2N_R)$ with constant extra space.
+The flashsort algorithm proceeds in three phases: \emph{Classification},
+\emph{Permutation} and \emph{Short-range Ordering}. A brief description of each
+of these phases is as follows:
+
+\subsubsection{Classification phase} The classification phase divides the input
+data into equi-range partitions comprising of contiguous and disjoint ranges.
+That is, if p partitions are required (where p is an input parameter), the
+difference between the minimum and the maximum input values is divided by p.
+Subsequently, each tuple is mapped to a partition depending on in which range
+the value of the sorting attribute of the tuple lies.  Specifically, a tuple
+with attribute value $v$ is assigned to $Partition(v)$, computed as
+$$Partition(v) = 1 + \lfloor \frac{(p-1)(v- v_{min})}{v_{max}-v_{min}} \rfloor$$
+where $v_{min}$ and $v_{max}$ are the smallest and largest attribute values in
+the array, respectively. The number of tuples in each such partition is counted
+to derive the boundary information.  We choose the number of partitions $p$ to
+be $\lceil c \times \frac{N_R L_R}{D} \rceil$, where $c \geq 1$ is a multiplier
+to cater to the space requirements of additional data structures constructed
+during sorting. In our experience, setting $c = 2$ works well in practice.
+
+\subsubsection{Permutation phase} The Permutation phase moves the elements to
+their respective partitions by leveraging the information obtained in the
+Classification phase. The elements are swapped in a cyclic manner to place each
+element inside its partition boundary with a single write step per element. 
+
+\subsubsection{Short-range Ordering phase} The resulting partitions, each having
+size less than $D$, are finally sorted in the Short-range Ordering phase using
+quicksort. Note that, by virtue of their size, these partitions are not expected
+to incur any evictions during the process of sorting.  \\
+
+\textbf{PCM write analysis}: Though the partition boundary counters are
+continuously updated during the Classification phase, they are expected to incur
+very few PCM writes. This is because the updates are all in quick succession,
+making it unlikely for the counters to be evicted from DRAM during the update
+process. Next, while in the Permutation phase, there are no more than $N_R L_R$
+writes since each tuple is written at most once while placing it inside its
+partition boundaries. Since each partition is within the DRAM size, its
+Short-range Ordering phase will finish in the DRAM itself, and then there will
+be another $N_R L_R$ writes upon eventual eviction of sorted partitions to PCM. 
+
+Thus, the number of word-writes incurred by this algorithm is estimated by
+\begin{equation} \label{eq:sort} \FlashsortWrites = \dfrac{2N_RL_R}{4} = \dfrac{N_R
+L_R}{2} \end{equation}
+
+\subsection{Data with non-uniform distribution} \label{sort_non_uniform} 
+
+In the case when the data is non-uniformly distributed, the equi-range
+partitioning used by flashsort fails to produce equi-sized partitions. This is
+because the number of tuples in each range is now dependent on the skew of the
+data.  We therefore propose an alternative algorithm, called \emph{multi-pivot flashsort}, 
+which uses multiple pivots
+instead to partition the input tuples. These pivots are randomly-chosen from the input
+itself, in the same manner as conventional quicksort selects a single pivot to
+create two partitions. The chosen pivots are subsequently leveraged to partition the 
+input during sorting.  
+
+The modified phases of this alternative implementation of the flashsort algorithm, along 
+with their pseudo-codes, are described next.
+
+\subsubsection{Classification phase} In the Classification phase, we divide the
+input relation into $p$ partitions, where $p = \lceil \frac{N_R L_R}{D}
+\rceil$, using $p-1$ random tuples as pivots. Since the pivots are picked at
+random, the hope is that each partition is approximately of size $D$.  These
+pivots are then copied to a separate location and sorted. Subsequently, we scan
+through the array of tuples in the relation, counting the number of elements
+between each consecutive pair of pivots. This is accomplished by carrying out,
+for each tuple in the array, a binary search within the sorted list of pivots.
+
+In spite of the random choice of pivot values, it is quite possible that some
+partitions may turn out to be larger than the DRAM. We account for this
+possibility by conservatively creating a larger number of initial partitions.
+Specifically, the number of partitions is $p = \lceil c \times \frac{N_R
+L_R}{D} \rceil$, where $c \geq 1$ is a design parameter similar to the one used
+in the flashsort algorithm. Subsequently, we consider each pair of adjoining
+partitions and coalesce them if their total size is within the DRAM size, after
+leaving some space for bookkeeping information. 
+
+While the above heuristic approach is quite effective, it still does not
+guarantee that all the resultant partitions will be less than DRAM size. The
+(hopefully few) cases of larger-sized partitions are subsequently handled
+during the Short-range Ordering phase.
+
+The pseudo-code for the Classification phase is outlined in
+Algorithm~\ref{alg:read_phase}.
+
+%\input{./src/mpflashsort_classification_phase_algo}
+
+\subsubsection{Permutation phase} The Permutation phase uses the information
+gathered in the Classification phase to group tuples of the same partition
+together. A slight difference from flashsort here is that the attribute value
+now needs to be compared against the sorted list of pivots to determine the
+partition of the tuple.  The pseudo-code for the Permutation phase is shown in
+Algorithm~\ref{alg:swap_phase}.  The maximum number of writes is bounded by
+$N_R L_R$, corresponding to the worst case where \emph{every} tuple has to be
+moved to its correct partition.
+
+%\input{./src/mpflashsort_perumutation_phase_algo}
+
+\subsubsection{Short-range Ordering phase} Finally, each of the partitions are
+sorted separately using conventional quicksort to get the final PCM sorted
+array. For partitions that turn out to be within the DRAM size, the Short-range
+Ordering phase is completed using conventional quicksort. On the other hand, if some
+larger-sized partitions still remain, we recursively apply the multi-pivot
+flashsort algorithm to sort them until all the resulting partitions can fit inside
+DRAM and can be internally sorted.
+
+%\input{./src/mpflashsort_srordering_phase_algo}
+
+Figure~\ref{fig:mpsort} visually displays the steps involved in the multi-pivot
+flashsort of an array of nine values. First, in the Classification phase, $30$
+and $10$ are randomly chosen as the pivots. These pivots divide the input
+elements into 3 different ranges: ($< 10$), ($\geq 10$, $< 30$), ($\geq 30$).
+The count of elements in each of these ranges is then determined by making a
+pass over the entire array -- in the example shown, three elements are present
+in each partition.  Then, in the Permutation phase, the elements are moved to
+within the boundaries of their respective partitions. Finally, in the
+Short-range Ordering phase, each partition is separately sorted within the
+DRAM.
+
+%\begin{figure}[h]
+%	\centering
+%	\subfloat[Classification Phase]{	
+%  	\includegraphics[width=8cm]{sort_step_1.png}
+%  	
+%  	\begin{tabular}{|c|c|c|y|c|y|c|c|c|}
+%        \hline
+%        12&3&33&30&11&10&7&32&8\\\hline
+%    \end{tabular}
+%    }
+%	\hspace{0mm}
+%	\subfloat[Permutation Phase]{
+%  	\begin{tabular}{|x|x|x|y|y|y|z|z|z|}
+%        \hline
+%        7&3&8&12&11&10&30&32&33\\\hline
+%    \end{tabular}
+%    }
+%    \hspace{0mm}
+%	\subfloat[Short-range Ordering Phase]{
+%  	\begin{tabular}{|x|x|x|y|y|y|z|z|z|}
+%        \hline
+%        3&7&8&10&11&12&30&32&33\\\hline
+%    \end{tabular}
+%    }
+%	\caption{Multi-Pivot Flashsort}
+%	\label{fig:mpsort}
+%	
+%\end{figure}
+
+%\newcolumntype{b}{>{\columncolor{white}}c}
+\textbf{PCM write analysis}: The analysis follows that of the flashsort
+algorithm. A negligible number of writes would be incurred during the copying and
+sorting of the pivots. As mentioned, the writes during Permutation phase would 
+be below $N_R L_R$. The creation of additional partitions by choosing extra
+pivots, and their subsequent coalescing, increases the likelihood that each
+partition is below DRAM size--akin to that in flashsort. Therefore
+the total word-writes is again estimated to be \begin{equation}
+\label{eq:mpivot} \MPFlashsortWrites = \frac{N_RL_R}{2} \end{equation}

@@ -1,0 +1,25 @@
+\begin{algorithm}[h!]
+\caption{PCM-conscious distinct grouping}
+\label{alg:hash_based_pcm_partition}
+\begin{algorithmic}[1]
+\State $ p = c\times \frac{N_R L_R}{D}$;
+\State $ size[] = {0..0}$;   
+\Comment{size of sub-arrays}\\
+\textbf{Read Phase}
+\For {i=$1$ to $N_R$}
+\State partition = hash(array[i]) 
+\State size[partition]++ 
+\EndFor
+\Comment {Time complexity=$N_R$ }
+\State cumulative = 0
+\For {i=$1$ to $p$}
+\State cumulative = cumulative + size[i]
+\State partitionStart[i+1] = cumulative
+\EndFor
+\Comment {Time complexity=$p$}\\
+\textbf{Swap Phase}
+\State Similar to multi-pivot quicksort swap phase presented in Algorithm~\ref{alg:swap_phase} with tuple swapping replaced by pointer-to-tuple swapping, and binary search within pivots replaced by hashing.
+\Comment {Time complexity=$N_R$ }
+\State return partitionStart[];
+\end{algorithmic}
+\end{algorithm} 

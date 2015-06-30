@@ -1,0 +1,29 @@
+\section{Conclusion}
+\label{conclusion}
+Designing database query execution algorithms for PCM platforms requires a
+change in perspective from the traditional assumptions of symmetric read
+and write overheads.  We presented here a variety of minimally modified algorithms
+for the workhorse database operators: \emph{sort}, \emph{hash join} and
+\emph{group-by}, which were constructed with a view towards simultaneously
+reducing both the number of writes and the response time. Through detailed
+experimentation on complete TPC-H benchmark queries, we showed that
+substantial improvements on these metrics can be obtained as compared
+to their contemporary PCM-oblivious counterparts.  Collaterally, the
+PCM cell lifetimes are also greatly extended by the new approaches.
+
+Using our write estimators for uniformly distributed data, we presented
+a redesigned database optimizer, thereby incorporating PCM-consciousness
+in all layers of the database engine. We also presented initial
+results showing how this can influence plan choices, and improve the write
+performance by a substantial margin.  While our experiments were conducted
+on a PCM simulator, the cycle-accurate nature of the simulator makes it
+likely that similar performance will be exhibited in the real world as
+well. In our future work, we would like to design write estimators that
+leverage the metadata statistics to accurately predict writes for skewed
+data. Additionally, we wish to design multi-objective
+optimization algorithms for query plan selection with provable performance
+guarantees.
+
+Overall, the results of this paper augur well for an easy migration of
+current database engines to leverage the benefits of tomorrow's PCM-based
+computing platforms.

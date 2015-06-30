@@ -1,0 +1,30 @@
+\begin{algorithm}
+\small
+\caption{Classification Phase}
+\label{alg:read_phase}
+\textbf{array[]} is the array of input tuples\\
+\textbf{c} is a design parameter $\geq 1$\\
+\begin{algorithmic}[1]
+\State p = $\lceil c\times \frac{N_R L_R}{D} \rceil$
+\State randIndex[] = generate $p-1$ random indexes
+\State pivot[] = array[randIndex];
+\State sort(pivot[])
+\State size[] = {0...0}   
+\Comment{size of sub-arrays}
+\State partitionStart[] = {0...0}
+\Comment{starting offset of each partition}
+\For {i=$1$ to $N_R$}
+\State partition = getPartition(array[i]) 
+\State size[partition]++ 
+\EndFor
+\Comment {Time complexity=$N_R\times log_2p$ }
+\State cumulative = 0
+\For {i=$1$ to $p$}
+\State cumulative = cumulative + size[i]
+\State partitionStart[i+1] = cumulative
+\EndFor
+\Comment {Time complexity=$p$ }
+\State return partitionStart[]
+\end{algorithmic}
+
+\end{algorithm}

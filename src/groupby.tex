@@ -1,0 +1,63 @@
+\section{The \emph{Group-By} Operator}%
+\label{gby}
+We now turn our attention to the group-by operator which typically
+forms the basis for aggregate function computations in SQL queries.
+Common methods for implementing group-by include \textit{sorting} and
+\textit{hashing} -- the specific choice of method depends both on the
+constraints associated with the operator expression itself, as well as
+on the downstream operators in the plan tree. We discuss below the
+PCM-conscious modifications of both implementations, which share
+a common number of \emph{output} tuple writes, namely $\gbcount \times \gblen$.
+
+\subsection{Hash-Based Grouping}
+
+A hash table entry for group-by, as compared to the corresponding
+entry in hash join, has an additional field containing the aggregate
+value. For each new tuple in the input array, a bucket index is
+obtained after hashing the value of the column present in the group-by
+expression. Subsequently, a search is made in the bucket indicated by
+the index. If a tuple matching the group-by column value is found, the
+aggregate field value is updated; else, a new entry is created in the
+bucket. Thus, unlike hash join, where each build tuple had its individual
+entry, here the grouped tuples share a common entry with an aggregate
+field that is constantly updated over the course of the algorithm.
+
+Since the hash table construction for group-by is identical to that
+of the hash join operator, the PCM-related modifications described
+in Section~\ref{hj} can be applied here as well. That is, we employ
+a page-based hash table organization, and a reduced hash value size,
+to reduce the writes to PCM.
+
+\textbf{PCM write analysis}: From the above discussion, it is easy to see
+that the total number of word-writes incurred for the PCM-conscious hash-based group-by is given by
+\begin{equation}
+\label{eq:gb_ht}
+W_{gb\_ht} = \frac {\gbcount \times \hashsize + 
+N_R \times \aggsize + \gbcount \times \gblen}{4}
+\end{equation}
+
+\subsection{Sort-Based Grouping}
+
+Sorting may be used for group-by when a fully ordered operator such
+as \textit{order by} or \textit{merge join} appears downstream in the plan
+tree. Another use case is for queries with a \textit{distinct} clause
+in the aggregate expression, in order to identify the duplicates that have
+to be discarded from the aggregate.  
+
+Sorting-based group-by differs in a key aspect from sorting itself
+in that the sorted tuples do not have to be written out. Instead, it
+is the aggregated tuples that are finally passed on to the next operator
+in the plan tree. Hence, we can modify the flashsort algorithm of
+Section~\ref{sort} to use \emph{pointers} in both the
+Permutation and Short-range Ordering phases, subsequently leveraging these
+pointers to perform aggregation on the sorted tuples. 
+
+\textbf{PCM write analysis}: The full tuple writes of $2 N_R L_R$
+which were incurred in the flashsort scheme, are
+now replaced by $2N_R \times P$ since pointers are used during
+both the Classification and Short-range Ordering phases. Thus, the total number of word-writes for this
+algorithm for uniformly distributed data would be
+\begin{equation}
+\label{eq:gb_sort}
+W_{gb\_sort} = \frac{2N_R \times P + \gbcount \times \gblen}{4}
+\end{equation}

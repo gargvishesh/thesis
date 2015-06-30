@@ -1,0 +1,15 @@
+\begin{algorithm}
+\small
+\caption{Short-range Ordering Phase}
+\label{alg:sort_phase}
+\begin{algorithmic}[1]
+\For {i=1 to p}
+\If {size[p] $<$ D}
+\State quicksort (partition p)
+\Else 
+\State multi-pivot flashsort (partition p)
+\EndIf 
+\EndFor
+\end{algorithmic}
+
+\end{algorithm}

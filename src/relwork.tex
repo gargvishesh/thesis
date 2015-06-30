@@ -1,0 +1,88 @@
+\section{Related Work}
+\label{relWork}
+Over the past decade, there has been considerable PCM-related research
+activity on both the architectural front and the various application
+domains, including database systems. A review of the literature that is
+closely related to our work is presented here.
+
+On the architectural side, buffer management strategies to reduce PCM
+latency and energy consumption have been discussed in \cite{lee}. Wear
+levelling algorithms are proposed in \cite{wear} that rotate the lines
+within a circular buffer each time a certain write threshold is reached. A
+randomized algorithm was introduced to handle the case when the writes
+are spatially concentrated to enable wear levelling across the entire
+PCM. Techniques to reduce writes by writing back only modified data to PCM
+upon eviction from LLC/DRAM are presented in~\cite{qureshi,write,lee,zhou}. 
+In Flip-N-Write scheme \cite{flipnwrite}, a modified data word
+or its complement is stored depending on whose Hamming distance to the
+original word is less. As a result, it restricts the maximum bit writes
+per word to $B/2$, where \textit{B} is the number of bits in a word.
+
+Turning our attention to the database front, for
+the \modelPcmRam{} memory model, write reduction techniques for index
+construction and for hash join are proposed in \cite{chen}. They recommend
+keeping the keys unsorted at the leaf nodes of the index. While this
+scheme saves on writes, the query response times are adversely impacted
+due to the increased search times.  Similarly, for partitioning during
+hash join, a pointer based approach is proposed to avoid full tuple
+writes. Since we assume database to be PCM-resident, this partitioning
+step is obviated in our algorithms. A predictive $B^+$ tree is proposed in \cite{hupredictive} 
+which pre-allocates node space based on current key distribution which 
+helps in reducing write cost due to node splits.
+
+For the \modelExplicit{} memory model, two classes of sort and
+join algorithms are presented in \cite{viglas}.  The first class
+divides the input into ``write-incurring'' and ``write-limited''
+segments. The write-incurring part is completed in a single pass
+whereas the write-limited part is executed in multiple iterations.
+In the second class of algorithms, the materialization of intermediate
+results is deferred until the read cost (in terms of time) exceeds
+the write cost.  Our work fundamentally differs from these approaches
+since in our \model{} model, there is no explicit control over DRAM.
+This means that we cannot selectively decide what to keep in DRAM at any
+point of time. It also implies that we may ultimately end up obtaining
+much less DRAM space than originally anticipated, due to other programs
+running in parallel on the system. As shown in Section \ref{sec:exp},
+our algorithms have been designed such that even with restricted memory
+availability, they perform better than conventional algorithms in terms
+of writes. 
+
+At a more specific level, the sorting algorithms proposed in \cite{viglas}
+employ a heap that may be constantly updated during each pass. If the
+available DRAM happens to be less than the heap size, it is likely
+that the updated entries will be repeatedly evicted, causing a large
+number of writes. Secondly, the join algorithms proposed in \cite{viglas}
+involve partitioning the data for the hash table to fit in DRAM. However,
+since the results are written out simultaneously with the join process,
+and the result size can be as large as the product of the join relation
+cardinalities, it is likely that the hash table will be evicted even
+after partitioning.
+
+Sorting algorithms for \modelExplicit{} model are also discussed in
+\cite{vamsi}. They split the input range into buckets such that each
+bucket can be sorted using DRAM. The bucket boundaries are determined
+using hybrid histograms having both depth-bound and width-bound buckets,
+the bound being decided depending upon which limit is hit later.
+The elements are then shuffled to group elements of the same bucket
+together, followed by sorting of each bucket within the DRAM. The
+sorting methodology used is quicksort or count-sort based on whether
+the bucket is depth-bound or width-bound respectively. A major drawback
+with this approach is that there is a high likelihood of an error in
+the approximation of the histogram, leading to DRAM overflow in some of
+the buckets. This would lead to additional writes since the overflowing
+buckets need to be split into adequately small fragments. Besides,
+the construction of the histogram itself may incur a number of writes.
+
+Finally, there has also been quite some research on speeding up query
+execution in \textit{flash-resident} databases. For instance, incorporation of the
+flash read-write asymmetry within the query optimizer is discussed
+in \cite{cost_aware}.  Their focus however is restricted to modifying the 
+operator cost modelling to suit the flash environment; the optimization process
+itself remaining largely unaltered. The use
+of a column based layout has been advocated in \cite{graefe} to avoid
+fetching of unnecessary attributes during scans. The same layout is also
+leveraged for joins by fetching only the columns participating in the
+join, deferring full tuple materialization to as late as possible in
+the plan tree. External merge sort is recommended for data not fitting
+in the DRAM. These techniques, though applicable to a PCM setting,
+are orthogonal to our work.

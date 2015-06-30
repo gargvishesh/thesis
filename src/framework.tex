@@ -1,0 +1,65 @@
+\section{Problem Framework}
+\label{sec:framework}
+In this section, we overview the problem framework, the assumptions made
+in our analysis, and the notations used in the sequel.
+
+We model the \model{} memory organization shown in Figure~\ref{fig:pcm_models} (c). 
+The DRAM buffer is of size $D$, and organized in a \emph{K-way
+set-associative} manner, like the L1/L2 processor cache memories. Moreover,
+its operation is identical to that of an \emph{inclusive} cache in the
+memory hierarchy, that is, a new DRAM line is fetched from PCM each time there
+is a DRAM miss. The last level cache in turn fetches its data from the
+DRAM buffer.
+
+We assume that the writes to PCM are in word-sized units (4B) and are incurred only when a data block is evicted from DRAM to PCM. A \textit{data-comparison write (DCW)} scheme \cite{write} is used for
+the writing of PCM memory blocks during eviction from DRAM -- in this
+scheme, the memory controller compares the existing PCM block to the newly
+evicted DRAM block, and selectively writes back only the modified words.
+Further, \textit{N-Chance}~\cite{nchance} is used as the DRAM eviction
+policy due to its preference for evicting non-dirty entries, thereby
+saving on writes. The failure recovery mechanism for updates is orthogonal to our work and is therefore not discussed in this paper.
+
+As described above, the simulator implements a realistic DRAM
+buffer. However, in our write analyses and estimators, we assume for
+tractability that there are no conflict misses in the DRAM. Thus, for
+any operation dealing with data whose size is within the DRAM capacity,
+our analysis assumes no evictions and consequently no writes. The experimental
+evaluation in Section~\ref{sec:validation} indicates the 
+impact of this assumption to be only marginal.
+
+With regard to the operators, we use $R$ to denote the input relation
+for the \textit{sort} and \textit{group-by} unary operators.  Whereas,
+for the binary \textit{hash join} operator, $R$ is used to denote the
+smaller relation, on which the hash table is constructed, while $S$
+denotes the probing relation. 
+
+In this paper, we assume that all input relations are \emph{completely PCM-resident}.
+Further, for presentation simplicity, we assume that the sort,
+hash join and group-by expressions are on singleton attributes --
+the extension to multiple attributes is straightforward.
+
+A summary of the main notation used in the analysis of the following
+sections is provided in Table~\ref{tab:notations}.
+
+\begin{table}[t]
+\centering
+\caption{Notations Used in Operator Analysis}
+\label{tab:notations}
+\begin{small}
+\begin{tabular}{p{2cm}p{11cm}}
+\toprule  
+\textbf{Term} & \textbf{Description}\\ 
+\midrule
+\textbf{$D$} & DRAM size\\
+\textbf{$K$} & DRAM Associativity\\
+\textbf{$N_R, N_S$} & Row cardinalities of input relations R and S, respectively\\
+\textbf{$L_R, L_S$} & Tuple lengths of input relations R and S, respectively\\
+\textbf{$P$} & Pointer size\\
+\textbf{$\hashsize$} & Size of each hash table entry\\
+\textbf{$\aggsize$} & Size of aggregate field (for group-by operator)\\
+\textbf{$\hjcount,\gbcount$} & Output tuple cardinalities of join and group-by operators, respectively\\
+\textbf{$\hjlen,\gblen$} & Output tuple lengths of join and group-by operators, respectively\\
+\bottomrule
+\end{tabular}
+\end{small}
+\end{table}
